@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Word Hunter</title>
+  <style>
+    :root{
+      --bg:#0f172a;/* slate-900 */
+      --panel:#111827ee;/* gray-900 */
+      --muted:#94a3b8;/* slate-400 */
+      --text:#e5e7eb;/* gray-200 */
+      --acc:#22d3ee;/* cyan-400 */
+      --acc2:#a78bfa;/* violet-400 */
+      --good:#34d399;/* emerald-400 */
+      --bad:#f87171;/* red-400 */
+      --gold:#fbbf24;/* amber-400 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 70% -10%, #1e293b, transparent), var(--bg);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .app{width:min(1100px, 96vw);}
+    .card{background:linear-gradient(180deg, #0b1022, #0a0f1c); border:1px solid #1f2937; border-radius:18px; box-shadow:0 10px 40px #0008; padding:24px;}
+    h1{margin:0 0 12px; font-size:clamp(28px, 4vw, 44px); letter-spacing:.5px}
+    .sub{color:var(--muted); font-size:14px}
+    .row{display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+    .col{display:flex; flex-direction:column; gap:10px}
+    button, select { border-radius:12px; border:1px solid #2b3545; padding:12px 16px; background:#0b1222; color:var(--text); cursor:pointer; font-weight:600; }
+    button:hover{ border-color:#3b4658; }
+    .btn-prim{ background:linear-gradient(90deg, var(--acc), var(--acc2)); color:#04111a; border:0; }
+    .btn-good{ background:linear-gradient(90deg, var(--good), #6ee7b7); color:#033; border:0; }
+    .btn-bad{ background:linear-gradient(90deg, #fda4af, var(--bad)); color:#300; border:0; }
+    .grid{ display:grid; gap:6px; user-select:none; touch-action:none; margin-top:14px; }
+    .cell{ width:clamp(26px, 6.2vw, 44px); height:clamp(26px, 6.2vw, 44px); display:flex; align-items:center; justify-content:center; font-weight:800; letter-spacing:.5px; border-radius:10px; background:#0b1222; border:1px solid #243041; transition:transform .05s; }
+    .cell.sel{ outline:2px solid var(--acc); background:#0e1a2e; }
+    .cell.found{ background:linear-gradient(180deg, #0d1b2a, #081424); border-color:#1f3b55; position:relative; }
+    .cell.found::after{ content:""; position:absolute; inset:0; border-radius:10px; box-shadow:inset 0 0 0 2px var(--good); }
+    .topbar{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+    .pill{ padding:8px 12px; border:1px solid #2b3545; border-radius:999px; color:var(--muted); font-size:13px }
+    .list{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+    .tag{ padding:6px 10px; border-radius:999px; background:#0b1222; border:1px dashed #2b3545; font-size:12px }
+    .words{ display:grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap:8px; margin-top:10px }
+    .word{ padding:8px 10px; border:1px solid #2b3545; border-radius:10px; font-weight:700; letter-spacing:.5px; background:#0b1222; }
+    .word.found{ border-color:#1f513b; background:#0b1f17; color:#9ef0c7 }
+    .foot{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:12px; flex-wrap:wrap }
+    .hidden{ display:none !important }
+    .menu{ display:grid; gap:14px; }
+    .title{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .logo{font-weight:900; letter-spacing:1px; background:linear-gradient(90deg, var(--acc), var(--acc2)); -webkit-background-clip:text; background-clip:text; color:transparent}
+    .inline-help{font-size:12px; color:var(--muted)}
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0e1627; border:1px solid #2b3545; padding:2px 6px; border-radius:6px}
+    .hr{height:1px; background:#1f2937; margin:10px 0}
+    .right{margin-left:auto}
+    .scoreboard{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .score{font-weight:900; padding:8px 12px; border-radius:10px; background:#0d1322; border:1px solid #2b3545}
+    .progress{height:10px; background:#0b1222; border:1px solid #2b3545; border-radius:999px; overflow:hidden;}
+    .progress>div{height:100%; background:linear-gradient(90deg, var(--acc), var(--gold)); width:0%}
+    .status{text-align:right; font-size:12px; color:var(--muted)}
+    .link{color:var(--acc)}
+    .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#0b1222; border:1px solid #2b3545; padding:10px 14px; border-radius:12px; font-weight:600; display:none}
+    @media (max-width:640px){
+      .grid{ gap:4px }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="title">
+        <h1 class="logo">WORD HUNTER</h1>
+        <div class="row">
+          <button id="btnHow" title="How to play">❓ How to Play</button>
+          <button id="btnScores" title="High scores">🏆 High Scores</button>
+        </div>
+      </div>
+
+      <!-- MENU SCREEN -->
+      <div id="menu" class="menu">
+        <div class="row">
+          <div class="col" style="min-width:260px">
+            <label>Category</label>
+            <select id="category"></select>
+          </div>
+          <div class="col" style="min-width:220px">
+            <label>Difficulty</label>
+            <select id="difficulty">
+              <option value="easy">Easy (8×8)</option>
+              <option value="medium" selected>Medium (10×10)</option>
+              <option value="hard">Hard (12×12)</option>
+            </select>
+          </div>
+          <div class="col" style="min-width:220px">
+            <label>Mode</label>
+            <select id="mode">
+              <option value="classic" selected>Classic (no timer)</option>
+              <option value="timed">Timed (2 minutes)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <button id="play" class="btn-prim">▶ Play</button>
+          <button id="randomize">🔀 Surprise Me</button>
+          <button id="toggleSound">🔈 Sound: On</button>
+        </div>
+        <div class="hr"></div>
+        <div class="inline-help">Tip: Drag across letters to select a word. Use <span class="kbd">Esc</span> to cancel a selection.</div>
+      </div>
+
+      <!-- GAME SCREEN -->
+      <div id="game" class="hidden">
+        <div class="topbar">
+          <div class="scoreboard">
+            <span id="score" class="score">Score: 0</span>
+            <span id="foundCount" class="pill">Found: 0/0</span>
+            <span id="hintsLeft" class="pill">Hints: 3</span>
+            <span id="timer" class="pill hidden">Time: 2:00</span>
+          </div>
+          <div class="row">
+            <button id="hint" title="Reveal a starting letter">💡 Hint</button>
+            <button id="restart">↻ Restart</button>
+            <button id="quit" class="btn-bad">⏹ Quit</button>
+          </div>
+        </div>
+
+        <div id="grid" class="grid" aria-label="letter grid"></div>
+
+        <div class="foot">
+          <div style="flex:1">
+            <div class="status" id="status">Select letters in a straight line to form words.</div>
+            <div class="progress" aria-label="progress"><div id="progressBar"></div></div>
+          </div>
+          <div class="right"><span class="pill">Category: <strong id="catLabel"></strong></span></div>
+        </div>
+
+        <div class="words" id="wordList"></div>
+      </div>
+
+      <!-- HOW TO PLAY -->
+      <div id="how" class="hidden">
+        <h3>How to Play</h3>
+        <ul>
+          <li>Choose a <strong>category</strong> and <strong>difficulty</strong>, then press <em>Play</em>.</li>
+          <li>Drag (or tap and drag) across letters to select a word in a straight line (horizontal, vertical, or diagonal).</li>
+          <li>Release to submit. If it matches a hidden word (forward or backward), you score!</li>
+          <li>Use <strong>Hints</strong> (max 3) to reveal a starting letter of an unfound word.</li>
+          <li>In <strong>Timed</strong> mode you have 2:00 minutes. Score big before time runs out.</li>
+          <li>Find them all to finish the round. Missed words are revealed at the end.</li>
+        </ul>
+        <button id="backFromHow">← Back</button>
+      </div>
+
+      <!-- HIGH SCORES -->
+      <div id="scores" class="hidden">
+        <h3>High Scores</h3>
+        <div id="scoresList" class="list"></div>
+        <div class="row">
+          <button id="clearScores">🗑️ Clear High Scores</button>
+          <button id="backFromScores">← Back</button>
+        </div>
+      </div>
+
+      <div id="toast" class="toast"></div>
+    </div>
+  </div>
+
+  <script>
+  // ---------- DATA ----------
+  const CATEGORIES = {
+    Animals:["CAT","DOG","PANDA","TIGER","EAGLE","WHALE","HORSE","LION","ZEBRA","MOUSE","OTTER","KOALA","SNAKE","SHARK","CAMEL","GORILLA","RABBIT","WOLF","SHEEP","FOX"],
+    Food:["BREAD","PASTA","PIZZA","SUSHI","BURGER","SALAD","CURRY","NOODLE","TACO","CHEESE","BUTTER","CARROT","LEMON","BANANA","MANGO","BISCUIT","WAFFLE","CHOCOLATE","OMLET","SOUP"],
+    Countries:["PAKISTAN","INDIA","NEPAL","CHINA","JAPAN","FRANCE","SPAIN","EGYPT","TURKEY","CANADA","BRAZIL","KENYA","NIGERIA","ITALY","GERMANY","SWEDEN","NORWAY","QATAR","UAE","MEXICO"],
+    Sports:["CRICKET","SOCCER","HOCKEY","TENNIS","RUGBY","BOXING","SWIM","CYCLING","SKI","SURF","GOLF","KARATE","JUDO","ROWING","DIVING","POLO"],
+    Technology:["ROBOT","LASER","SENSOR","WIFI","RADAR","DRONE","SERVER","PYTHON","CODING","BINARY","ALGORITHM","PIXEL","GPU","CACHE","ROUTER"]
+  };
+
+  const DIFFICULTY = {
+    easy: { size: 8, words: 8 },
+    medium: { size: 10, words: 10 },
+    hard: { size: 12, words: 12 }
+  };
+
+  const TIMER_SECONDS = 120; // 2 minutes
+
+  // ---------- STATE ----------
+  const state = {
+    size: 10,
+    grid: [], // letters
+    cells: [], // DOM references
+    placements: [], // {word, path:[{r,c}]}
+    targetWords: [], // uppercase
+    found: new Set(),
+    selecting: false,
+    selPath: [], // {r,c}
+    score: 0,
+    hints: 3,
+    mode: 'classic',
+    timeLeft: TIMER_SECONDS,
+    timerId: null,
+    sound: true,
+    category: 'Animals'
+  };
+
+  // ---------- UTIL ----------
+  const $ = sel => document.querySelector(sel);
+  const rand = (n) => Math.floor(Math.random()*n);
+  const choice = (arr)=> arr[rand(arr.length)];
+  const clamp = (v, a, b)=> Math.max(a, Math.min(b, v));
+  const toast = (msg)=>{ const t = $('#toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._id); t._id=setTimeout(()=>t.style.display='none', 1600); };
+
+  // Simple WebAudio blips (no external files)
+  let audioCtx = null;
+  function beep(type='sine', freq=660, dur=0.08, vol=0.03){
+    if(!state.sound) return;
+    try{
+      audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(audioCtx.destination); o.start(); setTimeout(()=>{o.stop();}, dur*1000);
+    }catch(e){/* no-op */}
+  }
+
+  function saveHighScore(name, score){
+    const key='wordHunterHighScores';
+    const list = JSON.parse(localStorage.getItem(key)||'[]');
+    list.push({name, score, date: new Date().toISOString()});
+    list.sort((a,b)=>b.score-a.score);
+    localStorage.setItem(key, JSON.stringify(list.slice(0,10)));
+  }
+  function getHighScores(){ return JSON.parse(localStorage.getItem('wordHunterHighScores')||'[]'); }
+  function clearHighScores(){ localStorage.removeItem('wordHunterHighScores'); }
+
+  // ---------- GRID/WORDS ----------
+  function newRound(){
+    state.grid = Array.from({length: state.size}, ()=> Array(state.size).fill(''));
+    state.placements = [];
+    state.found.clear();
+    state.selPath = [];
+    state.score = 0; updateScore();
+    state.hints = 3; updateHints();
+    $('#status').textContent = 'Select letters in a straight line to form words.';
+
+    // choose words
+    const pool = [...CATEGORIES[state.category]];
+    const want = DIFFICULTY[state.diff].words;
+    const chosen = new Set();
+    while(chosen.size < Math.min(want, pool.length)){
+      chosen.add(choice(pool));
+    }
+    state.targetWords = Array.from(chosen).map(w=>w.toUpperCase());
+
+    // place words
+    for(const w of state.targetWords){
+      placeWord(w);
+    }
+
+    // fill blanks
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for(let r=0;r<state.size;r++){
+      for(let c=0;c<state.size;c++){
+        if(!state.grid[r][c]) state.grid[r][c] = alphabet[rand(alphabet.length)];
+      }
+    }
+
+    renderGrid();
+    renderWordList();
+    updateFoundCount();
+    updateProgress();
+  }
+
+  const DIRS = [
+    [0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]
+  ];
+
+  function canPlace(word, r, c, dr, dc){
+    const n = word.length;
+    const R = state.size, C = state.size;
+    const endR = r + dr*(n-1), endC = c + dc*(n-1);
+    if(endR<0||endR>=R||endC<0||endC>=C) return false;
+    for(let i=0;i<n;i++){
+      const rr=r+dr*i, cc=c+dc*i;
+      const ch = state.grid[rr][cc];
+      if(ch && ch!==word[i]) return false; // conflict
+    }
+    return true;
+  }
+
+  function placeWord(word){
+    const attempts = 300;
+    for(let k=0;k<attempts;k++){
+      const drdc = choice(DIRS);
+      const r = rand(state.size), c = rand(state.size);
+      if(canPlace(word, r, c, drdc[0], drdc[1])){
+        const path=[];
+        for(let i=0;i<word.length;i++){
+          const rr=r+drdc[0]*i, cc=c+drdc[1]*i;
+          state.grid[rr][cc] = word[i];
+          path.push({r:rr,c:cc});
+        }
+        state.placements.push({word, path});
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ---------- RENDER ----------
+  function renderCategoryOptions(){
+    const sel = $('#category');
+    sel.innerHTML = Object.keys(CATEGORIES).map((k,i)=>`<option value="${k}" ${i===0?'selected':''}>${k}</option>`).join('');
+  }
+
+  function renderGrid(){
+    const g = $('#grid');
+    g.innerHTML='';
+    g.style.gridTemplateColumns = `repeat(${state.size}, 1fr)`;
+    state.cells = [];
+    for(let r=0;r<state.size;r++){
+      for(let c=0;c<state.size;c++){
+        const idx = r*state.size+c;
+        const el = document.createElement('div');
+        el.className='cell';
+        el.textContent = state.grid[r][c];
+        el.dataset.r=r; el.dataset.c=c; el.dataset.idx=idx;
+        g.appendChild(el);
+        state.cells[idx]=el;
+      }
+    }
+  }
+
+  function renderWordList(){
+    const w = $('#wordList');
+    w.innerHTML = state.targetWords.map(word=>`<div class="word" data-word="${word}">${word}</div>`).join('');
+  }
+
+  function updateScore(){ $('#score').textContent = `Score: ${state.score}`; }
+  function updateHints(){ $('#hintsLeft').textContent = `Hints: ${state.hints}`; }
+  function updateFoundCount(){ $('#foundCount').textContent = `Found: ${state.found.size}/${state.targetWords.length}`; }
+  function updateProgress(){ const p = (state.found.size/state.targetWords.length)*100; $('#progressBar').style.width = p+"%"; }
+
+  // ---------- SELECTION ----------
+  function startSelect(target){
+    state.selecting = true; state.selPath = [];
+    addToPath(target);
+  }
+  function addToPath(target){
+    if(!target || !target.classList.contains('cell')) return;
+    const r = +target.dataset.r, c = +target.dataset.c;
+    const last = state.selPath[state.selPath.length-1];
+    // avoid duplicates unless continuing straight
+    if(last && last.r===r && last.c===c) return;
+    state.selPath.push({r,c});
+    target.classList.add('sel');
+  }
+  function clearSelection(){
+    state.selecting=false;
+    for(const {r,c} of state.selPath){ cellAt(r,c).classList.remove('sel'); }
+    state.selPath=[]; $('#status').textContent='';
+  }
+  function endSelect(){
+    if(!state.selPath.length){ state.selecting=false; return; }
+    const ok = validateSelection();
+    if(!ok){ beep('sawtooth', 180, .06); toast('Not a word'); }
+    clearSelection();
+  }
+  function cellAt(r,c){ return state.cells[r*state.size+c]; }
+
+  function validateSelection(){
+    const L = state.selPath.length; if(L<2) return false;
+    const letters = state.selPath.map(({r,c})=>state.grid[r][c]).join('');
+
+    // must be straight line
+    const dr = clamp(state.selPath[L-1].r - state.selPath[0].r, -1, 1);
+    const dc = clamp(state.selPath[L-1].c - state.selPath[0].c, -1, 1);
+    if(dr===0 && dc===0) return false;
+    // rebuild ideal straight path and compare
+    const path=[]; let rr=state.selPath[0].r, cc=state.selPath[0].c;
+    for(let i=0;i<L;i++){ path.push({r:rr,c:cc}); rr+=dr; cc+=dc; }
+    const same = path.every((p,i)=> p.r===state.selPath[i].r && p.c===state.selPath[i].c);
+    if(!same) return false;
+
+    const word = letters.toUpperCase();
+    const rev = letters.split('').reverse().join('').toUpperCase();
+
+    // check against target words and placements to ensure exact path matches a hidden word
+    const placement = state.placements.find(p=> !state.found.has(p.word) && (
+      eqPath(p.path, path) || eqPath(p.path, path.slice().reverse())
+    ));
+
+    if(placement){
+      onWordFound(placement.word, placement.path);
+      return true;
+    }
+    // Also allow if the letters form a remaining target word even if placed overlapping (fallback)
+    if(state.targetWords.includes(word) && !state.found.has(word)){
+      onWordFound(word, path);
+      return true;
+    }
+    if(state.targetWords.includes(rev) && !state.found.has(rev)){
+      onWordFound(rev, path);
+      return true;
+    }
+    return false;
+  }
+
+  function eqPath(a,b){ if(a.length!==b.length) return false; for(let i=0;i<a.length;i++){ if(a[i].r!==b[i].r || a[i].c!==b[i].c) return false; } return true; }
+
+  function onWordFound(word, path){
+    state.found.add(word);
+    state.score += 10 + Math.max(0, 6 - path.length); // small bonus for shorter path (speedy feel)
+    updateScore(); updateFoundCount(); updateProgress();
+    for(const {r,c} of path){ cellAt(r,c).classList.add('found'); }
+    const chip = document.querySelector(`.word[data-word="${word}"]`); if(chip){ chip.classList.add('found'); }
+    $('#status').textContent = `Nice! Found ${word}.`;
+    beep('triangle', 720, .08); setTimeout(()=>beep('triangle', 820, .08), 60);
+
+    // check win
+    if(state.found.size === state.targetWords.length){
+      endGame(true);
+    }
+  }
+
+  // ---------- HINTS ----------
+  function useHint(){
+    if(state.hints<=0){ toast('No hints left'); return; }
+    const remaining = state.targetWords.filter(w=>!state.found.has(w));
+    if(!remaining.length){ toast('All words found!'); return; }
+    const pick = choice(remaining);
+    const placement = state.placements.find(p=>p.word===pick);
+    const {r,c} = placement.path[0];
+    state.hints--; updateHints();
+    pulseCell(r,c);
+    $('#status').textContent = `Hint: Starting letter for ${pick}`;
+    beep('sine', 600, .08);
+  }
+  function pulseCell(r,c){
+    const el = cellAt(r,c);
+    el.style.outline = `3px solid var(--gold)`;
+    el.style.transform = 'scale(1.06)';
+    setTimeout(()=>{ el.style.outline=''; el.style.transform=''; }, 600);
+  }
+
+  // ---------- TIMER ----------
+  function startTimer(){
+    stopTimer();
+    state.timeLeft = TIMER_SECONDS;
+    $('#timer').classList.toggle('hidden', state.mode!=="timed");
+    if(state.mode!=="timed") return;
+    $('#timer').textContent = `Time: ${fmtTime(state.timeLeft)}`;
+    state.timerId = setInterval(()=>{
+      state.timeLeft--; $('#timer').textContent = `Time: ${fmtTime(state.timeLeft)}`;
+      if(state.timeLeft<=0){ stopTimer(); endGame(false); }
+    },1000);
+  }
+  function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+  const fmtTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+  // ---------- GAME FLOW ----------
+  function startGame(){
+    $('#menu').classList.add('hidden'); $('#how').classList.add('hidden'); $('#scores').classList.add('hidden');
+    $('#game').classList.remove('hidden');
+    newRound(); startTimer();
+    $('#catLabel').textContent = state.category;
+    $('#status').textContent = 'Good luck!';
+  }
+
+  function endGame(won){
+    stopTimer();
+    const missed = state.targetWords.filter(w=>!state.found.has(w));
+    const base = state.score + (won?20:0);
+    const timeBonus = (state.mode==='timed') ? Math.max(0, state.timeLeft) : 0;
+    const final = base + Math.floor(timeBonus/2);
+    state.score = final; updateScore();
+
+    // reveal missed words
+    for(const m of missed){
+      const p = state.placements.find(x=>x.word===m);
+      if(p){ for(const {r,c} of p.path){ cellAt(r,c).classList.add('found'); } }
+      const chip = document.querySelector(`.word[data-word="${m}"]`); if(chip) chip.classList.add('found');
+    }
+
+    setTimeout(()=>{
+      const name = prompt(`${won? '🎉 You found all words!':'⏱️ Time\'s up!'}\n\nFinal score: ${final}\nEnter your name (optional) to save:`) || 'Player';
+      saveHighScore(name, final);
+      showScores();
+    }, 200);
+  }
+
+  function quitToMenu(){ stopTimer(); $('#game').classList.add('hidden'); $('#menu').classList.remove('hidden'); }
+
+  // ---------- SCORES UI ----------
+  function showScores(){
+    $('#menu').classList.add('hidden'); $('#game').classList.add('hidden'); $('#how').classList.add('hidden');
+    $('#scores').classList.remove('hidden');
+    const list = getHighScores();
+    const box = $('#scoresList'); box.innerHTML='';
+    if(!list.length){ box.innerHTML = '<span class="pill">No scores yet. Play a round!</span>'; return; }
+    for(const s of list){
+      const el = document.createElement('div');
+      el.className='tag';
+      const d = new Date(s.date);
+      el.textContent = `${s.name} — ${s.score} pts (${d.toLocaleDateString()})`;
+      box.appendChild(el);
+    }
+  }
+
+  // ---------- EVENTS ----------
+  function bindEvents(){
+    // menu buttons
+    $('#play').addEventListener('click', ()=>{ startGame(); });
+    $('#randomize').addEventListener('click', ()=>{
+      $('#category').selectedIndex = rand(Object.keys(CATEGORIES).length);
+      $('#difficulty').selectedIndex = rand(3);
+      $('#mode').selectedIndex = rand(2);
+    });
+    $('#toggleSound').addEventListener('click', (e)=>{ state.sound=!state.sound; e.target.textContent = state.sound? '🔈 Sound: On':'🔇 Sound: Off'; });
+
+    $('#btnHow').addEventListener('click', ()=>{ $('#menu').classList.add('hidden'); $('#how').classList.remove('hidden'); $('#scores').classList.add('hidden'); });
+    $('#backFromHow').addEventListener('click', ()=>{ $('#how').classList.add('hidden'); $('#menu').classList.remove('hidden'); });
+
+    $('#btnScores').addEventListener('click', showScores);
+    $('#backFromScores').addEventListener('click', ()=>{ $('#scores').classList.add('hidden'); $('#menu').classList.remove('hidden'); });
+    $('#clearScores').addEventListener('click', ()=>{ if(confirm('Clear all high scores?')){ clearHighScores(); showScores(); } });
+
+    // selects
+    $('#category').addEventListener('change', e=>{ state.category = e.target.value; });
+    $('#difficulty').addEventListener('change', e=>{ state.diff = e.target.value; state.size = DIFFICULTY[state.diff].size; });
+    $('#mode').addEventListener('change', e=>{ state.mode = e.target.value; });
+
+    // game buttons
+    $('#hint').addEventListener('click', useHint);
+    $('#restart').addEventListener('click', ()=>{ startGame(); });
+    $('#quit').addEventListener('click', ()=>{ if(confirm('Quit this round?')) quitToMenu(); });
+
+    // grid interactions (mouse & touch)
+    const grid = $('#grid');
+    grid.addEventListener('mousedown', e=>{ if(e.target.classList.contains('cell')) startSelect(e.target); });
+    grid.addEventListener('mousemove', e=>{ if(state.selecting && e.target.classList.contains('cell')) addToPath(e.target); });
+    window.addEventListener('mouseup', endSelect);
+
+    // touch
+    grid.addEventListener('touchstart', e=>{ const t = e.touches[0]; const el = document.elementFromPoint(t.clientX, t.clientY); if(el && el.classList.contains('cell')){ startSelect(el); } });
+    grid.addEventListener('touchmove', e=>{ const t = e.touches[0]; const el = document.elementFromPoint(t.clientX, t.clientY); if(state.selecting && el && el.classList.contains('cell')){ addToPath(el); } });
+    grid.addEventListener('touchend', endSelect);
+
+    // keyboard
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape') clearSelection(); });
+  }
+
+  // ---------- INIT ----------
+  function init(){
+    renderCategoryOptions();
+    state.diff = $('#difficulty').value;
+    state.size = DIFFICULTY[state.diff].size;
+    state.mode = $('#mode').value;
+    state.category = $('#category').value;
+    bindEvents();
+  }
+  init();
+
+  </script>
+</body>
+</html>
